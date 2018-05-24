@@ -8,3 +8,6 @@ The following modules should be enabled
 - HTTP Basic Authentication
 - Serialization
 
+Permissions
+
+ - Create and update path aliases
