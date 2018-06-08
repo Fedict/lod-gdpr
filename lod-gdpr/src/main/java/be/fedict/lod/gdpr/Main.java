@@ -41,6 +41,7 @@ import org.apache.http.entity.ContentType;
  */
 public class Main {
 	private final static String FMT = "?_format=hal_json";
+	
 	private final static String PATH_TOKEN = "/session/token";
 	private final static String CSRF_HEADER = "X-CSRF-Token";
 	private final static String MIME_HAL = "application/hal+json";
@@ -48,7 +49,7 @@ public class Main {
 	
 	// REST end points
 	private final static String PATH_DT_NODE = "/rest/type/node/datatreatment";
-	private final static String PATH_TERM = "/rest/type/taxonomy_term/tags";
+	private final static String PATH_TERM = "/rest/type/taxonomy_term/organization";
 	
 	private static String host;
 	private static String token;
@@ -71,6 +72,8 @@ public class Main {
 	 * @return 
 	 */
 	private static Request createRequest(String path) {
+		System.err.println("Request: " + host + path + FMT);
+		
 		return Request.Post(host + path + FMT)
 							.addHeader(CSRF_HEADER, token)
 							.addHeader(HttpHeaders.CONTENT_TYPE, MIME_HAL)
@@ -98,15 +101,16 @@ public class Main {
 			.add("_links", Json.createObjectBuilder()
 								.add("type", Json.createObjectBuilder()
 												.add("href", host + PATH_TERM)))
-			.add("path", Json.createArrayBuilder()
+	/*		.add("path", Json.createArrayBuilder()
 								.add(Json.createObjectBuilder()
 										.add("alias", "fpsbosa")
 										.add("lang", "en"))
 								.add(Json.createObjectBuilder()
 										.add("alias", "fodbosa")
-										.add("lang", "nl")))
-			.add("vid", Json.createObjectBuilder()
-								.add("target_id", "organization"))
+										.add("lang", "nl"))) */
+			.add("vid", Json.createArrayBuilder()
+								.add(Json.createObjectBuilder()
+								.	add("target_id", "organization")))
 			.add("name", Json.createArrayBuilder()
 								.add(Json.createObjectBuilder()
 									.add("value", "FPS BOSA DG DT")
@@ -174,14 +178,17 @@ public class Main {
 		
 		// get session token for next requests 
         token = exec.execute(getTokenRequest(host)).returnContent().asString();
+		System.err.println(token);
 		
 		Request req = createRequest("/");
 		exec.execute(req);
 
 		// create new term
 		JsonObject term = createTerm();
-		req = createRequest("/entity/taxonomy_term");
+		req = createRequest("/entity/taxonomy_term/");
+		System.err.println(term.toString());
 		req.bodyString(term.toString(), TYPE_HAL);
+
 		System.err.println(exec.execute(req).returnContent().asString());
 		
 		// create new page
