@@ -46,26 +46,82 @@ public class Main {
 	private final static String MIME_HAL = "application/hal+json";
 	private final static ContentType TYPE_HAL = ContentType.create(MIME_HAL);
 	
+	// REST end points
 	private final static String PATH_DT_NODE = "/rest/type/node/datatreatment";
+	private final static String PATH_TERM = "/rest/type/taxonomy_term/tags";
 	
 	private static String host;
 	private static String token;
     
+	/**
+	 * Get request for a CSRF-protection session token (to be used in every request)
+	 * 
+	 * @param host Drupal website
+	 * @return token request
+	 * @throws IOException 
+	 */
 	private static Request getTokenRequest(String host) throws IOException {
 		return Request.Get(host + PATH_TOKEN);
 	}
 	
+	/**
+	 * Create an HTTP request
+	 * 
+	 * @param path
+	 * @return 
+	 */
 	private static Request createRequest(String path) {
-		return Request.Patch(host + path + FMT)
+		return Request.Post(host + path + FMT)
 							.addHeader(CSRF_HEADER, token)
 							.addHeader(HttpHeaders.CONTENT_TYPE, MIME_HAL)
 							.addHeader(HttpHeaders.ACCEPT, MIME_HAL);
 	}
 	
+	/**
+	 * Create a executor / webclient
+	 * 
+	 * @param user username
+	 * @param pass password
+	 * @return 
+	 */
 	private static Executor createExecutor(String user, String pass) {
 		return Executor.newInstance().auth(user, pass);
 	}
 	
+	/**
+	 * Create a new term node (can be quite complex)
+	 * 
+	 * @return 
+	 */
+	private static JsonObject createTerm() {
+		return Json.createObjectBuilder()
+			.add("_links", Json.createObjectBuilder()
+								.add("type", Json.createObjectBuilder()
+												.add("href", host + PATH_TERM)))
+			.add("path", Json.createArrayBuilder()
+								.add(Json.createObjectBuilder()
+										.add("alias", "fpsbosa")
+										.add("lang", "en"))
+								.add(Json.createObjectBuilder()
+										.add("alias", "fodbosa")
+										.add("lang", "nl")))
+			.add("vid", Json.createObjectBuilder()
+								.add("target_id", "organization"))
+			.add("name", Json.createArrayBuilder()
+								.add(Json.createObjectBuilder()
+									.add("value", "FPS BOSA DG DT")
+									.add("lang", "en"))
+								.add(Json.createObjectBuilder()
+									.add("value", "FOD BOSA Digitale Transformatie")
+									.add("lang", "nl")))	
+			.build();	
+	}
+	
+	/**
+	 * Create a new Drupal page (node)
+	 * 
+	 * @return 
+	 */
 	private static JsonObject createPage() { 
 		return Json.createObjectBuilder()
 			.add("_links", Json.createObjectBuilder()
@@ -74,36 +130,67 @@ public class Main {
 			.add("path", Json.createArrayBuilder()
 								.add(Json.createObjectBuilder()
 										.add("alias", "newie")
-										.add("lang", "en")))
+										.add("lang", "en"))
+								.add(Json.createObjectBuilder()
+										.add("alias", "newie")
+										.add("lang", "nl")))
 			.add("type", Json.createObjectBuilder()
 								.add("target_id", "datatreatment"))
 			.add("title", Json.createArrayBuilder()
 								.add(Json.createObjectBuilder()
 									.add("value", "new title goes here again")
-									.add("lang", "en")))
+									.add("lang", "en"))
+								.add(Json.createObjectBuilder()
+									.add("value", "nieuwe titel gaat hier weer")
+									.add("lang", "nl")))
 			.add("body", Json.createArrayBuilder()
 								.add(Json.createObjectBuilder()
 									.add("value", "yihaa new body goes here again we go ")
-									.add("lang", "en")))
-		.build();
+									.add("lang", "en"))
+								.add(Json.createObjectBuilder()
+									.add("value", "nieuwe body gaat hier weer")
+									.add("lang", "nl")))		
+			.build();
 	}
 
+	/**
+	 * Main
+	 * 
+	 * @param args
+	 * @throws IOException 
+	 */
 	public static void main(String[] args) throws IOException {
-		host = "https://gdpr.rovin.be";
-		String user = "rest";
-		String password = "rest+yada";
+		// process arguments
+		if (args.length < 3) {
+			System.err.println("Usage: <https://site.name> <username> <password>");
+		}
 		
+		host = args[0];
+		String user = args[1];
+		String password = args[2];
+		
+		// create web client
 		Executor exec = createExecutor(user, password);
 		
+		// get session token for next requests 
         token = exec.execute(getTokenRequest(host)).returnContent().asString();
 		
 		Request req = createRequest("/");
 		exec.execute(req);
 
-		JsonObject obj = createPage();
-		System.err.println(obj.toString());
-		req = createRequest("/en/datatreatment/new-title-goes-here-again");
-		req.bodyString(obj.toString(), TYPE_HAL);
+		// create new term
+		JsonObject term = createTerm();
+		req = createRequest("/entity/taxonomy_term");
+		req.bodyString(term.toString(), TYPE_HAL);
+		System.err.println(exec.execute(req).returnContent().asString());
+		
+		// create new page
+		JsonObject page = createPage();
+		System.err.println(page.toString());
+		//req = createRequest("/en/datatreatment/new-title-goes-here-again");		
+		req = createRequest("/entity/node");
+		req.bodyString(page.toString(), TYPE_HAL);
+		
 		System.err.println(exec.execute(req).returnContent().asString());
 	}
 }
